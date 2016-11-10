@@ -4,7 +4,6 @@ package com.feicuiedu.treasure.treasure.home.map;
 import android.os.Bundle;
 import android.support.annotation.Nullable;
 import android.support.v4.app.Fragment;
-import android.text.TextUtils;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -21,33 +20,14 @@ import com.baidu.location.LocationClient;
 import com.baidu.location.LocationClientOption;
 import com.baidu.mapapi.map.BaiduMap;
 import com.baidu.mapapi.map.BaiduMapOptions;
-import com.baidu.mapapi.map.BitmapDescriptor;
-import com.baidu.mapapi.map.BitmapDescriptorFactory;
-import com.baidu.mapapi.map.InfoWindow;
 import com.baidu.mapapi.map.MapStatus;
 import com.baidu.mapapi.map.MapStatusUpdate;
 import com.baidu.mapapi.map.MapStatusUpdateFactory;
 import com.baidu.mapapi.map.MapView;
-import com.baidu.mapapi.map.Marker;
-import com.baidu.mapapi.map.MarkerOptions;
 import com.baidu.mapapi.map.MyLocationData;
 import com.baidu.mapapi.model.LatLng;
-import com.baidu.mapapi.search.core.SearchResult;
-import com.baidu.mapapi.search.geocode.GeoCodeResult;
-import com.baidu.mapapi.search.geocode.GeoCoder;
-import com.baidu.mapapi.search.geocode.OnGetGeoCoderResultListener;
-import com.baidu.mapapi.search.geocode.ReverseGeoCodeOption;
-import com.baidu.mapapi.search.geocode.ReverseGeoCodeResult;
-import com.daimajia.androidanimations.library.Techniques;
-import com.daimajia.androidanimations.library.YoYo;
 import com.feicuiedu.treasure.R;
-import com.feicuiedu.treasure.commons.ActivityUtils;
 import com.feicuiedu.treasure.components.TreasureView;
-import com.feicuiedu.treasure.treasure.Area;
-import com.feicuiedu.treasure.treasure.Treasure;
-import com.feicuiedu.treasure.treasure.TreasureRepo;
-
-import java.util.List;
 
 import butterknife.BindView;
 import butterknife.ButterKnife;
@@ -81,6 +61,9 @@ public class MapFragment extends Fragment {
     private MapView mapView;
     private BaiduMap baiduMap;
     private Unbinder bind;
+    private LatLng myLocation;
+
+    private boolean isFirst = true;
 
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
@@ -97,6 +80,61 @@ public class MapFragment extends Fragment {
 
         // 初始化百度地图
         initBaiduMap();
+
+        //初始化位置
+        initLocation();
+    }
+
+    private void initLocation() {
+        baiduMap.setMyLocationEnabled(true);
+        final LocationClient myLocationClient = new LocationClient(getContext());
+        LocationClientOption locationClientOption = new LocationClientOption();
+        locationClientOption.setOpenGps(true);
+        locationClientOption.setIsNeedAddress(true);
+        locationClientOption.setAddrType("bd90ll");
+        myLocationClient.setLocOption(locationClientOption);
+        myLocationClient.registerLocationListener(new BDLocationListener() {
+            @Override
+            public void onReceiveLocation(BDLocation bdLocation) {
+                if (bdLocation == null) {
+                    myLocationClient.requestLocation();
+                    return;
+                }
+                double lng = bdLocation.getLongitude();
+                double lat = bdLocation.getLatitude();
+                myLocation = new LatLng(lat, lng);
+                MyLocationData myLocationData = new MyLocationData.Builder()
+                        .latitude(lat)
+                        .longitude(lng)
+                        .accuracy(100f)
+                        .build();
+                baiduMap.setMyLocationData(myLocationData);
+                if (isFirst) {
+                    moveToMyLocation();
+                    isFirst = false;
+                }
+            }
+        });
+        myLocationClient.start();
+        myLocationClient.requestLocation();
+
+    }
+
+    @OnClick(R.id.tv_located)
+    public void moveToMyLocation() {
+        MapStatus mapStatus = new MapStatus.Builder()
+                .target(myLocation)
+                .rotate(0)
+                .zoom(19)
+                .build();
+        MapStatusUpdate mapStatusUpdate = MapStatusUpdateFactory.newMapStatus(mapStatus);
+        baiduMap.animateMapStatus(mapStatusUpdate);
+    }
+
+    @OnClick(R.id.tv_compass)
+    public void switchCompass() {
+        boolean compassEnabled = baiduMap.getUiSettings().isCompassEnabled();
+        baiduMap.getUiSettings().setCompassEnabled(!compassEnabled);
     }
 
     private void initBaiduMap() {
@@ -165,5 +203,18 @@ public class MapFragment extends Fragment {
     public void onDestroyView() {
         super.onDestroyView();
         bind.unbind();
+    }
+
+
+    @OnClick({R.id.iv_scaleUp, R.id.iv_scaleDown})
+    public void onClick(View view) {
+        switch (view.getId()) {
+            case R.id.iv_scaleUp:
+                baiduMap.animateMapStatus(MapStatusUpdateFactory.zoomIn());
+                break;
+            case R.id.iv_scaleDown:
+                baiduMap.animateMapStatus(MapStatusUpdateFactory.zoomOut());
+                break;
+        }
     }
 }

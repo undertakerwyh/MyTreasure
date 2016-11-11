@@ -1,6 +1,7 @@
 package com.feicuiedu.treasure.treasure.home.map;
 
 
+import android.graphics.Point;
 import android.os.Bundle;
 import android.support.annotation.Nullable;
 import android.support.v4.app.Fragment;
@@ -135,6 +136,7 @@ public class MapFragment extends Fragment {
     public void switchCompass() {
         boolean compassEnabled = baiduMap.getUiSettings().isCompassEnabled();
         baiduMap.getUiSettings().setCompassEnabled(!compassEnabled);
+        baiduMap.setCompassPosition(new Point(100,100));
     }
 
     private void initBaiduMap() {

@@ -1,8 +1,7 @@
 package com.feicuiedu.treasure.net;
 
+import com.feicuiedu.treasure.treasure.TreasureApi;
 import com.feicuiedu.treasure.user.UserApi;
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
 
 import java.util.concurrent.TimeUnit;
 
@@ -19,6 +18,7 @@ public class NetClient {
 
     private final OkHttpClient client;
     private final Retrofit retrofit;
+    private TreasureApi trasureApi;
 
     private NetClient() {
 
@@ -63,7 +63,12 @@ public class NetClient {
     /**
      * 获取宝藏API对象
      */
-
+    public TreasureApi getTreasureApi(){
+        if(trasureApi==null){
+            trasureApi = retrofit.create(TreasureApi.class);
+        }
+        return trasureApi;
+    }
     public OkHttpClient getClient() {
         return client;
     }

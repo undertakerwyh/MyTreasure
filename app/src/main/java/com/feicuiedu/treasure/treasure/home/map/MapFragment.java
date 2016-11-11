@@ -21,14 +21,24 @@ import com.baidu.location.LocationClient;
 import com.baidu.location.LocationClientOption;
 import com.baidu.mapapi.map.BaiduMap;
 import com.baidu.mapapi.map.BaiduMapOptions;
+import com.baidu.mapapi.map.BitmapDescriptor;
+import com.baidu.mapapi.map.BitmapDescriptorFactory;
+import com.baidu.mapapi.map.InfoWindow;
 import com.baidu.mapapi.map.MapStatus;
 import com.baidu.mapapi.map.MapStatusUpdate;
 import com.baidu.mapapi.map.MapStatusUpdateFactory;
 import com.baidu.mapapi.map.MapView;
+import com.baidu.mapapi.map.Marker;
+import com.baidu.mapapi.map.MarkerOptions;
 import com.baidu.mapapi.map.MyLocationData;
 import com.baidu.mapapi.model.LatLng;
 import com.feicuiedu.treasure.R;
+import com.feicuiedu.treasure.commons.ActivityUtils;
 import com.feicuiedu.treasure.components.TreasureView;
+import com.feicuiedu.treasure.treasure.Area;
+import com.feicuiedu.treasure.treasure.Treasure;
+
+import java.util.List;
 
 import butterknife.BindView;
 import butterknife.ButterKnife;
@@ -38,7 +48,7 @@ import butterknife.Unbinder;
 /**
  *
  */
-public class MapFragment extends Fragment {
+public class MapFragment extends Fragment implements MapMvpView{
 
     @BindView(R.id.map_frame)
     FrameLayout mapFrame;
@@ -63,6 +73,9 @@ public class MapFragment extends Fragment {
     private BaiduMap baiduMap;
     private Unbinder bind;
     private LatLng myLocation;
+    private LatLng target;
+
+    private ActivityUtils activityUtils;
 
     private boolean isFirst = true;
 
@@ -72,6 +85,7 @@ public class MapFragment extends Fragment {
 
         View view = inflater.inflate(R.layout.fragment_map, container, false);
         bind = ButterKnife.bind(this, view);
+        activityUtils = new ActivityUtils(this);
         return view;
     }
 
@@ -170,7 +184,27 @@ public class MapFragment extends Fragment {
         // 怎么对地图状态进行监听？
         baiduMap.setOnMapStatusChangeListener(mapStatusChangeListener);
 
+        baiduMap.setOnMarkerClickListener(new BaiduMap.OnMarkerClickListener() {
+            @Override
+            public boolean onMarkerClick(Marker marker) {
+                if(currentMarker!=null){
+                    currentMarker.setVisible(true);
+                }
+                currentMarker = marker;
+                marker.setVisible(false);
+                InfoWindow infoWindow = new InfoWindow(click_dot, marker.getPosition(), 0, new InfoWindow.OnInfoWindowClickListener() {
+                    @Override
+                    public void onInfoWindowClick() {
+
+                    }
+                });
+                baiduMap.showInfoWindow(infoWindow);
+                return false;
+            }
+        });
+
     }
+    private Marker currentMarker;
 
 
     // 地图类型的切换（普通视图--卫星视图）
@@ -197,8 +231,25 @@ public class MapFragment extends Fragment {
 
         @Override
         public void onMapStatusChangeFinish(MapStatus mapStatus) {
+            LatLng target = mapStatus.target;
+            if(target!=MapFragment.this.target){
+                updateMapArea();
+                MapFragment.this.target = target;
+            }
         }
     };
+
+    private void updateMapArea() {
+        MapStatus mapStatus = baiduMap.getMapStatus();
+        double lng = mapStatus.target.longitude;
+        double lat = mapStatus.target.latitude;
+        Area area = new Area();
+        area.setMaxLat(Math.ceil(lat));
+        area.setMaxLng(Math.ceil(lng));
+        area.setMinLat(Math.floor(lat));
+        area.setMinLng(Math.floor(lng));
+        new MapPresenter(this).getTreasure(area);
+    }
 
 
     @Override
@@ -218,5 +269,32 @@ public class MapFragment extends Fragment {
                 baiduMap.animateMapStatus(MapStatusUpdateFactory.zoomOut());
                 break;
         }
+    }
+
+    @Override
+    public void showMessage(String msg) {
+        activityUtils.showToast(msg);
+    }
+
+    @Override
+    public void setData(List<Treasure> list) {
+        for(Treasure treasure :list){
+            LatLng latLng = new LatLng(treasure.getLatitude(),treasure.getLongitude());
+            addMarker(latLng,treasure.getId());
+        }
+    }
+    private BitmapDescriptor dot = BitmapDescriptorFactory.fromResource(R.drawable.treasure_dot);
+    private BitmapDescriptor click_dot = BitmapDescriptorFactory.fromResource(R.drawable.treasure_expanded);
+
+
+    private void addMarker(LatLng latLng, int treasureId) {
+        MarkerOptions markerOptions = new MarkerOptions();
+        markerOptions.position(latLng);
+        markerOptions.icon(dot);
+        markerOptions.anchor(0.5f,0.5f);
+        Bundle bundle = new Bundle();
+        bundle.putInt("id",treasureId);
+        markerOptions.extraInfo(bundle);
+        baiduMap.addOverlay(markerOptions);
     }
 }

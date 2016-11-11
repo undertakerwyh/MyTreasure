@@ -92,7 +92,7 @@ public class MapFragment extends Fragment {
         LocationClientOption locationClientOption = new LocationClientOption();
         locationClientOption.setOpenGps(true);
         locationClientOption.setIsNeedAddress(true);
-        locationClientOption.setAddrType("bd90ll");
+        locationClientOption.setAddrType("bd09ll");
         myLocationClient.setLocOption(locationClientOption);
         myLocationClient.registerLocationListener(new BDLocationListener() {
             @Override
